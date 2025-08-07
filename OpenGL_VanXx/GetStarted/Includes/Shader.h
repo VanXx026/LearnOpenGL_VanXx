@@ -86,6 +86,14 @@ public:
 	{
 		glUniform1f(glGetUniformLocation(Id, name.c_str()), value);
 	}
+	void setFloat3(const std::string& name, float x, float y, float z)
+	{
+		glUniform3f(glGetUniformLocation(Id, name.c_str()), x, y, z);
+	}
+	void setFloat4(const std::string& name, float x, float y, float z, float w)
+	{
+		glUniform4f(glGetUniformLocation(Id, name.c_str()), x, y, z, w);
+	}
 private:
 	void check_shader_Fail(GLuint shader, GLenum status)
 	{

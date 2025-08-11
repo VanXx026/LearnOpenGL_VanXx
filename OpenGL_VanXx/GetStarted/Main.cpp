@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <Shader.h>
+#include <Camera.h>
 #include <stb_image.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -125,41 +126,66 @@ glm::vec3 cubePositions[] = {
   glm::vec3(-1.3f,  1.0f, -1.5f)
 };
 
-
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+
+// camera
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float lastX = SCR_WIDTH / 2.0f;
+float lastY = SCR_HEIGHT / 2.0f;
+bool firstMouse = true;
+
+// timing
+float deltaTime = 0.0f;	// time between current frame and last frame
+float lastFrame = 0.0f;
 
 void frame_buffer_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
 
-void process_input(GLFWwindow* window)
+// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
+// ---------------------------------------------------------------------------------------------------------
+void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-	{
 		glfwSetWindowShouldClose(window, true);
-	}
+
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		camera.ProcessKeyboard(FORWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		camera.ProcessKeyboard(BACKWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		camera.ProcessKeyboard(LEFT, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
-void check_shader_Fail(GLuint shader, GLenum status)
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
-	int  success;
-	char infoLog[512];
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success)
+	float xpos = static_cast<float>(xposIn);
+	float ypos = static_cast<float>(yposIn);
+
+	if (firstMouse)
 	{
-		glGetShaderInfoLog(shader, 512, NULL, infoLog);
-		if (status == GL_COMPILE_STATUS)
-		{
-			std::cout << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
-		}
-		if (status == GL_LINK_STATUS)
-		{
-			std::cout << "ERROR::SHADER::LINK_FAILED\n" << infoLog << std::endl;
-		}
+		lastX = xpos;
+		lastY = ypos;
+		firstMouse = false;
 	}
+
+	float xoffset = xpos - lastX;
+	float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+
+	lastX = xpos;
+	lastY = ypos;
+
+	camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
 int main()
@@ -182,6 +208,9 @@ int main()
 	}
 	glfwMakeContextCurrent(window);
 	glfwSetFramebufferSizeCallback(window, frame_buffer_callback);
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetScrollCallback(window, scroll_callback);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	// 3. GLAD 初始化 load all OpenGL function pointers
 	// glfwGetProcAddress会返回当前操作系统OpenGL使用的函数地址，返回函数指针
@@ -375,17 +404,15 @@ int main()
 	//unsigned int transformLoc = glGetUniformLocation(shader.Id, "transform");
 	//glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
-	float fov = 10.0f;
-	float aspect = 0.1f;
-	float xx = 0.0f;
-	float yy = 0.0f;
-	float zz = 0.0f;
-
 	// Render Loop
 	while (!glfwWindowShouldClose(window))
 	{
+		float currentFrame = static_cast<float>(glfwGetTime());
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
+
 		// 处理输入
-		process_input(window);
+		processInput(window);
 
 		// Render Call
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -432,49 +459,29 @@ int main()
 
 		shader.use();
 
-		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		{
-			zz += 0.1f;
-		}
-		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		{
-			zz -= 0.1f;
-		}
-		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		{
-			//xx -= 0.1f; // 会向右走
-			xx += 0.1f;
-		}
-		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		{
-			xx -= 0.1f;
-		}
-		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-		{
-			//yy += 0.1f; // 会向下走
-			yy -= 0.1f;
-		}
-		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-		{
-			//yy -= 0.1f;
-			yy += 0.1f;
-		}
+		//glm::mat4 model = glm::mat4(1.0f);
+		//model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+		//glm::mat4 view = glm::mat4(1.0f);
+		////view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+		//view = glm::translate(view, glm::vec3(xx, yy, zz));
+		//glm::mat4 projection = glm::mat4(1.0f);
+		//projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / SCR_HEIGHT, 0.1f, 100.0f);
+		////projection = glm::perspective(glm::radians(fov), aspect, 0.1f, 100.0f);
+		////int modelLoc = glGetUniformLocation(shader.Id, "model");
+		////glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		//int viewLoc = glGetUniformLocation(shader.Id, "view");
+		//glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+		//int projectionLoc = glGetUniformLocation(shader.Id, "projection");
+		//glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+		////glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
-		glm::mat4 view = glm::mat4(1.0f);
-		//view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-		view = glm::translate(view, glm::vec3(xx, yy, zz));
-		glm::mat4 projection = glm::mat4(1.0f);
-		projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / SCR_HEIGHT, 0.1f, 100.0f);
-		//projection = glm::perspective(glm::radians(fov), aspect, 0.1f, 100.0f);
-		//int modelLoc = glGetUniformLocation(shader.Id, "model");
-		//glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		int viewLoc = glGetUniformLocation(shader.Id, "view");
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		int projectionLoc = glGetUniformLocation(shader.Id, "projection");
-		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-		//glDrawArrays(GL_TRIANGLES, 0, 36);
+		// pass projection matrix to shader (note that in this case it could change every frame)
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		shader.setMat4("projection", projection);
+
+		// camera/view transformation
+		glm::mat4 view = camera.GetViewMatrix();
+		shader.setMat4("view", view);
 
 		glBindVertexArray(VAO);
 		for (unsigned int i = 0; i < 10; i++)

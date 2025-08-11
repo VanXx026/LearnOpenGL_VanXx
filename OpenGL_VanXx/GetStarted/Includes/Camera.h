@@ -28,8 +28,9 @@ public:
 	glm::vec3 Right;
 	glm::vec3 WorldUp;
 
-	float Yaw;
-	float Pitch;
+	float Yaw; // 绕Y轴旋转
+	float Pitch; // 绕X轴旋转
+	// 不考虑Roll 也就是绕Z轴旋转
 
 	float MovementSpeed;
 	float MouseSensitivity;
@@ -54,7 +55,27 @@ public:
 
 	glm::mat4 GetViewMatrix()
 	{
-		return glm::lookAt(Position, Position + Front, Up);
+		//return glm::lookAt(Position, Position + Front, Up);
+		glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
+		//glm::vec3 dir = glm::normalize(target - Position);
+		glm::vec3 dir = glm::normalize(Position - target);
+		glm::vec3 fUp = glm::vec3(0.0f, 1.0f, 0.0f);
+		glm::vec3 right = glm::normalize(glm::cross(dir, fUp));
+		glm::vec3 up = glm::normalize(glm::cross(dir, right));
+		glm::mat4 rotation = glm::mat4(1.0f);
+		rotation[0][0] = right.x; // First column, first row
+		rotation[1][0] = right.y;
+		rotation[2][0] = right.z;
+		rotation[0][1] = up.x; // First column, second row
+		rotation[1][1] = up.y;
+		rotation[2][1] = up.z;
+		rotation[0][2] = dir.x; // First column, third row
+		rotation[1][2] = dir.y;
+		rotation[2][2] = dir.z;
+		rotation[3][0] = -Position.x;
+		rotation[3][1] = -Position.y;
+		rotation[3][2] = -Position.z;
+		return rotation;
 	}
 
 	void ProcessKeyboard(Camera_Movement direction, float deltaTime)

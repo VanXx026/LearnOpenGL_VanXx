@@ -56,12 +56,18 @@ public:
 	glm::mat4 GetViewMatrix()
 	{
 		//return glm::lookAt(Position, Position + Front, Up);
-		glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
+		//glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
+		glm::vec3 target = Position + Front;
 		//glm::vec3 dir = glm::normalize(target - Position);
+		//glm::vec3 dir = glm::normalize(Position - target);
 		glm::vec3 dir = glm::normalize(Position - target);
 		glm::vec3 fUp = glm::vec3(0.0f, 1.0f, 0.0f);
-		glm::vec3 right = glm::normalize(glm::cross(dir, fUp));
+		glm::vec3 right = glm::normalize(glm::cross(fUp, dir));
 		glm::vec3 up = glm::normalize(glm::cross(dir, right));
+		glm::mat4 translation = glm::mat4(1.0f); // Identity matrix by default
+		translation[3][0] = -Position.x;
+		translation[3][1] = -Position.y;
+		translation[3][2] = -Position.z;
 		glm::mat4 rotation = glm::mat4(1.0f);
 		rotation[0][0] = right.x; // First column, first row
 		rotation[1][0] = right.y;
@@ -72,10 +78,40 @@ public:
 		rotation[0][2] = dir.x; // First column, third row
 		rotation[1][2] = dir.y;
 		rotation[2][2] = dir.z;
-		rotation[3][0] = -Position.x;
-		rotation[3][1] = -Position.y;
-		rotation[3][2] = -Position.z;
-		return rotation;
+
+		return rotation * translation; // 反过来还不行，肯定是先确定位置再计算轴；反过来就是先计算了轴再位移
+
+		//glm::vec3 position = Position;
+		////glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
+		//glm::vec3 target = Position + Front;
+		//glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+		//// 1. Position = known
+		//// 2. Calculate cameraDirection
+		//glm::vec3 zaxis = glm::normalize(position - target);
+		//// 3. Get positive right axis vector
+		//glm::vec3 xaxis = glm::normalize(glm::cross(glm::normalize(worldUp), zaxis));
+		//// 4. Calculate camera up vector
+		//glm::vec3 yaxis = glm::cross(zaxis, xaxis);
+
+		//// Create translation and rotation matrix
+		//// In glm we access elements as mat[col][row] due to column-major layout
+		//glm::mat4 translation = glm::mat4(1.0f); // Identity matrix by default
+		//translation[3][0] = -position.x; // Third column, first row
+		//translation[3][1] = -position.y;
+		//translation[3][2] = -position.z;
+		//glm::mat4 rotation = glm::mat4(1.0f);
+		//rotation[0][0] = xaxis.x; // First column, first row
+		//rotation[1][0] = xaxis.y;
+		//rotation[2][0] = xaxis.z;
+		//rotation[0][1] = yaxis.x; // First column, second row
+		//rotation[1][1] = yaxis.y;
+		//rotation[2][1] = yaxis.z;
+		//rotation[0][2] = zaxis.x; // First column, third row
+		//rotation[1][2] = zaxis.y;
+		//rotation[2][2] = zaxis.z;
+
+		//// Return lookAt matrix as combination of translation and rotation matrix
+		//return rotation * translation; // Remember to read from right to left (first translation then rotation)
 	}
 
 	void ProcessKeyboard(Camera_Movement direction, float deltaTime)
